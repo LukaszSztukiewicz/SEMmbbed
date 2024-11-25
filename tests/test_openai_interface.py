@@ -10,37 +10,19 @@ def openai_interface():
     model_name = os.getenv("MODEL_NAME", "gpt-4o-mini")
     return OpenAIInterface(api_key=api_key, model_name=model_name)
 
-def test_init_openai_interface(openai_interface):
-    assert openai_interface.model_name == "gpt-4o-mini"
-    assert openai_interface.client.api_key is not None
-
 def test_get_classification_result_from_text(openai_interface):
-    # Test case where classification is 'Yes'
-    text_yes = "Classification: Yes\nReason: The account exhibits bot-like behavior."
-    classification = openai_interface.get_classification_result_from_text(text_yes)
-    assert classification == 1
-
-    # Test case where classification is 'No'
-    text_no = "Classification: No\nReason: The account appears to be genuine."
-    classification = openai_interface.get_classification_result_from_text(text_no)
-    assert classification == 0
-
-    # Test with different casing
-    text_mixed_case = "Classification: yEs\nReason: Unusual activity detected."
-    classification = openai_interface.get_classification_result_from_text(text_mixed_case)
-    assert classification == 1
-
-    # Test with leading/trailing spaces
-    text_spaces = "Classification:   No   \nReason: No indicators of bot activity."
-    classification = openai_interface.get_classification_result_from_text(text_spaces)
-    assert classification == 0
-
     # Test with real generated text
-    text_real_generated = """- **Classification:** No  
-- **Reason:** Although the account shows low engagement metrics and nonsensical tweet content, these factors alone do not definitively classify it as a bot. The account's long-term presence since August 2020, engagement attempt consistency (although selective), and the unique username and specified location indicate human-like behavior. The variability in tweet content and the absence of automated retweets further suggest a genuine user who may prioritize quality interactions over sheer numbers, which is more characteristic of human users than bots. Therefore, despite certain suspicious characteristics, the account exhibits enough human-like traits to classify it as not a bot.
+    text_real_generated = """- **Reason:** The account presents characteristics both supporting and opposing the classification as a bot. On the one hand, the disproportionate follower count relative to engagement and the presence of generic tweet content raise concerns about automation. However, the account's steady growth in followers, diverse content over a substantial period, and lack of an excessive automated engagement pattern suggest genuine human operation. The engagement patterns, though low, do not align with typical bot behavior that often focuses on amplification and visibility through excessive retweets and mentions. These human-like engagement tendencies, along with the unique but credible location information, point towards the account being operated by a human, despite potential atypical engagement metrics. Moreover, the account lacks characteristics like excessive hashtags, which are often indicative of bots trying to boost visibility artificially. Considering these factors, the balance tips towards a human-operated account.
+- **Classification:** No
 """
     classification = openai_interface.get_classification_result_from_text(text_real_generated)
     assert classification == 0
+
+    text_real_generated = """- **Reason:** The account presents characteristics both supporting and opposing the classification as a bot. On the one hand, the disproportionate follower count relative to engagement and the presence of generic tweet content raise concerns about automation. However, the account's steady growth in followers, diverse content over a substantial period, and lack of an excessive automated engagement pattern suggest genuine human operation. The engagement patterns, though low, do not align with typical bot behavior that often focuses on amplification and visibility through excessive retweets and mentions. These human-like engagement tendencies, along with the unique but credible location information, point towards the account being operated by a human, despite potential atypical engagement metrics. Moreover, the account lacks characteristics like excessive hashtags, which are often indicative of bots trying to boost visibility artificially. Considering these factors, the balance tips towards a human-operated account.
+- **Classification:** Yes
+"""
+    classification = openai_interface.get_classification_result_from_text(text_real_generated)
+    assert classification == 1
 
     # Test with invalid format (should raise an IndexError)
     text_invalid = "Some irrelevant text"

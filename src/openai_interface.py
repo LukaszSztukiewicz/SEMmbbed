@@ -14,8 +14,13 @@ class OpenAIInterface:
         logging.debug(f"OpenAI model set to: {self.model_name}, temperature: {self.temperature}")
 
     def get_classification_result_from_text(self, text):
-        final_answer = text.split("\n")[0].split(":")[1].strip()
-        classification = 1 if final_answer.lower() == "yes" else 0
+        final_answer = text.split("**Classification:**")[1].strip()
+        if final_answer.lower() == "yes":
+            classification = 1
+        elif final_answer.lower() == "no":
+            classification = 0
+        else:
+            raise IndexError("Invalid classification format in OpenAI response")
         return classification
 
     def get_arguments_for_bot(self, account_details):
@@ -118,7 +123,20 @@ Average Daily Retweets: {account_details['avg_daily_retweets']}
     def get_final_classification(self, account_details, bot_args, human_args):
         logging.info("Generating final classification")
         prompt = f"""\
-Based on the following analysis, provide a final classification of the Twitter account as a bot or not.
+Based on the following analysis, provide a final classification of the Twitter account as a bot or not. Consider the arguments for and against bot classification. Make the decision carefully and provide a clear explanation for your choice.
+Think carefully about the arguments presented and the account details provided. Write down the reasons for your classification and treat them more like a thought process than a simple answer. Only then proceed to provide the final classification.
+
+**Account Details:**
+Username: @{account_details['username']}
+Account Creation: {account_details['created_at']}
+Total Tweets: {account_details['tweet']}
+Followers: {account_details['follower_count']}
+Retweets: {account_details['retweet_count']}
+Mentions: {account_details['mention_count']}
+Verified: {'Yes' if account_details['verified'] else 'No'}
+Location: {account_details['location']}
+Hashtags: {', '.join(account_details['hashtags'])}
+Average Daily Retweets: {account_details['avg_daily_retweets']}
 
 **Bot Arguments:**
 {bot_args}
@@ -127,12 +145,12 @@ Based on the following analysis, provide a final classification of the Twitter a
 {human_args}
 
 **Provide your final classification with the following structure:**
-- **Classification:** Yes/No
 - **Reason:** Detailed explanation based on the above arguments.
+- **Classification:** Yes/No
 
 **Example:**
-- **Classification:** Yes
 - **Reason:** The account exhibits high retweet frequency and lacks location information, which are strong indicators of bot activity.
+- **Classification:** Yes
 
 **Now, provide the final classification for this account."""
 
@@ -144,7 +162,8 @@ Based on the following analysis, provide a final classification of the Twitter a
             messages=[
                 {"role": "system", "content": "You are an expert in summarizing analysis to provide clear classifications."},
                 {"role": "user", "content": prompt}
-            ]
+            ],
+            temperature=self.temperature
         )
 
         # Log the response

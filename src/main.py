@@ -11,7 +11,7 @@ from tqdm import tqdm  # Add this import
 
 # Configure logging to output to a file
 logging.basicConfig(
-    filename=f'bot_detector_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log',
+    filename=f'logs/bot_detector_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log',
     filemode='w',  # Overwrite the log file each time
     level=logging.DEBUG,  # Set to DEBUG to capture all messages
     format='%(asctime)s %(levelname)s:%(message)s'
@@ -26,9 +26,7 @@ def process_account(account, openai_interface):
         bot_args = openai_interface.get_arguments_for_bot(account_details)
         human_args = openai_interface.get_arguments_against_bot(account_details)
         final_classification = openai_interface.get_final_classification(account_details, bot_args, human_args)
-
-        final_answer = final_classification.split("\n")[0].split(":")[1].strip()
-        classification = 1 if final_answer.lower() == "yes" else 0
+        classification = openai_interface.get_classification_result_from_text(final_classification)
 
         logging.info(f"Account @{account.username} classified as {'Bot' if classification else 'Human'}")
         return true_label, classification

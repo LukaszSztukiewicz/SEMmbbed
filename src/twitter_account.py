@@ -6,7 +6,6 @@ import pprint
 class TwitterAccount:
     def __init__(self, user_id, username, tweet, retweet_count, mention_count,
                  follower_count, verified, bot_label, location, created_at, hashtags):
-        logging.info("Initializing TwitterAccount")
         self.user_id = user_id
         self.username = username
         self.tweet = tweet
@@ -19,17 +18,14 @@ class TwitterAccount:
         self.created_at = created_at
         self.hashtags = hashtags.split(',') if hashtags else []
         self.avg_daily_retweets = self._calculate_avg_daily_retweets()
-        logging.info(f"Account details: {self.get_account_details()}")
 
     def _calculate_avg_daily_retweets(self):
         try:
             creation_datetime = datetime.strptime(self.created_at, '%Y-%m-%d %H:%M:%S')
             days_active = (datetime.now() - creation_datetime).days
             avg = round(self.retweet_count / max(days_active, 1), 2)
-            logging.debug(f"Average daily retweets calculated: {avg}")
             return avg
         except ValueError:
-            logging.warning("Invalid date format. Using 0 for average daily retweets.")
             return 0
 
     def get_account_details(self):
