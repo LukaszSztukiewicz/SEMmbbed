@@ -5,7 +5,8 @@ from dotenv import load_dotenv
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from .dataset_reader import read_dataset
-from .openai_interface import OpenAIInterface
+from .robust_dataset_reader import read_robust_dataset
+from .openai_interface import OpenAIInterface, RobustOpenAIInterface
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from tqdm import tqdm  # Add this import
 
@@ -48,22 +49,26 @@ def main():
     model_name = os.getenv("MODEL_NAME", "gpt-3.5-turbo")
     limit_samples_dataset = os.getenv("LIMIT_SAMPLES_DATASET")
     temperature = float(os.getenv("TEMPERATURE", 0.5))
+    use_robust = os.getenv("USE_ROBUST", "true").lower() == "true"
 
-    # Initialize OpenAI interface
-    openai_interface = OpenAIInterface(api_key, model_name, temperature)
+    # Initialize appropriate OpenAI interface
+    if use_robust:
+        openai_interface = RobustOpenAIInterface(api_key, model_name, temperature)
+        dataset_path = os.getenv("ROBUST_DATASET_PATH", "data/robust_dataset.csv")
+        accounts = read_robust_dataset(dataset_path)
+    else:
+        openai_interface = OpenAIInterface(api_key, model_name, temperature)
+        dataset_path = os.getenv("DATASET_PATH", "dataset.csv")
+        accounts = read_dataset(dataset_path, int(limit_samples_dataset) if limit_samples_dataset else None)
 
-    logging.info("Twitter Bot Detector Started")
+    logging.info(f"Twitter Bot Detector Started in {'robust' if use_robust else 'standard'} mode")
     print("\nTwitter Bot Detector Performance Evaluation")
     print("==========================================\n")
-
-    # Load dataset
-    dataset_path = os.getenv("DATASET_PATH", "dataset.csv")
-    accounts = read_dataset(dataset_path, int(limit_samples_dataset) if limit_samples_dataset else None)
+    print(f"Using {'robust' if use_robust else 'standard'} mode")
     print(f"Total accounts to analyze: {len(accounts)}\n")
 
     true_labels = []
     predicted_labels = []
-
     max_workers = int(os.getenv("MAX_WORKERS", os.cpu_count() or 1))
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
