@@ -23,151 +23,114 @@ class OpenAIInterface:
             raise IndexError("Invalid classification format in OpenAI response")
         return classification
 
-    def get_arguments_for_bot(self, account_details):
-        """Get arguments supporting bot classification using OpenAI."""
-        logging.info("Generating arguments for bot classification")
+    def get_bot_agent_arguments(self, account_details):
+        """Initial arguments for bot classification."""
         prompt = f"""\
-Analyze the following Twitter account data and identify reasons that suggest the account might be a bot.
+As a Bot Detection Expert, analyze this Twitter account data and provide arguments suggesting it's a bot.
 
 **Account Details:**
-Username: @{account_details['username']}
-Account Creation: {account_details['created_at']}
-Total Tweets: {account_details['tweet']}
-Followers: {account_details['follower_count']}
-Retweets: {account_details['retweet_count']}
-Mentions: {account_details['mention_count']}
-Verified: {'Yes' if account_details['verified'] else 'No'}
-Location: {account_details['location']}
-Hashtags: {', '.join(account_details['hashtags'])}
-Average Daily Retweets: {account_details['avg_daily_retweets']}
+{self._format_account_details(account_details)}
 
-**Provide your analysis with the following structure:**
-1. Suspicious Patterns
-2. Red Flags
-
-**Example:**
-1. Suspicious Patterns:
-   - High retweet frequency suggests automation.
-   - Lack of location information.
-2. Red Flags:
-   - Sudden spikes in follower count.
-
-**Now, provide the arguments supporting the classification of this account as a bot."""
-
-        # Log the prompt
-        logging.debug(f"Prompt for bot arguments:\n{prompt}")
-
-        response = self.client.chat.completions.create(
-            model=self.model_name,
-            messages=[
-                {"role": "system", "content": "You are an expert in detecting Twitter bot accounts."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=self.temperature
-        )
-
-        # Log the response
-        logging.debug(f"Response for bot arguments:\n{response.choices[0].message.content}")
-
-        logging.debug("Bot arguments retrieved from OpenAI")
+Focus on suspicious patterns and red flags. Be thorough but concise.
+"""
+        response = self._get_completion(prompt, "You are an expert focused on detecting Twitter bots.")
         return response.choices[0].message.content
 
-    def get_arguments_against_bot(self, account_details):
-        logging.info("Generating arguments against bot classification")
+    def get_human_agent_arguments(self, account_details):
+        """Initial arguments against bot classification."""
         prompt = f"""\
-Analyze the following Twitter account data and identify reasons that suggest the account is operated by a genuine human.
+As a Human Behavior Expert, analyze this Twitter account data and provide arguments suggesting it's a genuine human user.
 
 **Account Details:**
-Username: @{account_details['username']}
-Account Creation: {account_details['created_at']}
-Total Tweets: {account_details['tweet']}
-Followers: {account_details['follower_count']}
-Retweets: {account_details['retweet_count']}
-Mentions: {account_details['mention_count']}
-Verified: {'Yes' if account_details['verified'] else 'No'}
-Location: {account_details['location']}
-Hashtags: {', '.join(account_details['hashtags'])}
-Average Daily Retweets: {account_details['avg_daily_retweets']}
+{self._format_account_details(account_details)}
 
-**Provide your analysis with the following structure:**
-1. Authentic Behavior Patterns
-2. Indicators of Human Operation
-
-**Example:**
-1. Authentic Behavior Patterns:
-   - Diverse tweet content indicates human creativity.
-   - Engagement with followers through replies.
-2. Indicators of Human Operation:
-   - Verified status provides authenticity.
-   - Consistent retweet patterns over time.
-
-**Now, provide the arguments against the classification of this account as a bot."""
-
-        # Log the prompt
-        logging.debug(f"Prompt for human arguments:\n{prompt}")
-
-        response = self.client.chat.completions.create(
-            model=self.model_name,
-            messages=[
-                {"role": "system", "content": "You are an expert in detecting genuine human behavior on Twitter."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=self.temperature
-        )
-
-        # Log the response
-        logging.debug(f"Response for human arguments:\n{response.choices[0].message.content}")
-
+Focus on authentic behavior patterns and human indicators. Be thorough but concise.
+"""
+        response = self._get_completion(prompt, "You are an expert in human social media behavior.")
         return response.choices[0].message.content
 
-    def get_final_classification(self, account_details, bot_args, human_args):
-        logging.info("Generating final classification")
+    def get_bot_critic_response(self, account_details, human_arguments):
+        """Bot expert critiques the human agent's arguments."""
         prompt = f"""\
-Based on the following analysis, provide a final classification of the Twitter account as a bot or not. Consider the arguments for and against bot classification. Make the decision carefully and provide a clear explanation for your choice.
-Think carefully about the arguments presented and the account details provided. Write down the reasons for your classification and treat them more like a thought process than a simple answer. Only then proceed to provide the final classification.
+As a Bot Detection Expert, critique these arguments claiming the account is human:
 
 **Account Details:**
-Username: @{account_details['username']}
-Account Creation: {account_details['created_at']}
-Total Tweets: {account_details['tweet']}
-Followers: {account_details['follower_count']}
-Retweets: {account_details['retweet_count']}
-Mentions: {account_details['mention_count']}
-Verified: {'Yes' if account_details['verified'] else 'No'}
-Location: {account_details['location']}
-Hashtags: {', '.join(account_details['hashtags'])}
-Average Daily Retweets: {account_details['avg_daily_retweets']}
+{self._format_account_details(account_details)}
 
-**Bot Arguments:**
+**Human Expert's Arguments:**
+{human_arguments}
+
+Point out flaws in their reasoning and provide counter-evidence.
+"""
+        response = self._get_completion(prompt, "You are a critical bot detection expert.")
+        return response.choices[0].message.content
+
+    def get_human_critic_response(self, account_details, bot_arguments):
+        """Human expert critiques the bot agent's arguments."""
+        prompt = f"""\
+As a Human Behavior Expert, critique these arguments claiming the account is a bot:
+
+**Account Details:**
+{self._format_account_details(account_details)}
+
+**Bot Expert's Arguments:**
+{bot_arguments}
+
+Point out flaws in their reasoning and provide counter-evidence.
+"""
+        response = self._get_completion(prompt, "You are a critical human behavior expert.")
+        return response.choices[0].message.content
+
+    def get_final_classification(self, account_details, bot_args, human_args, bot_critique, human_critique):
+        """Judge makes final assessment based on the debate."""
+        prompt = f"""\
+As an impartial judge, review this Twitter account classification debate:
+
+**Account Details:**
+{self._format_account_details(account_details)}
+
+**Initial Bot Arguments:**
 {bot_args}
 
-**Human Arguments:**
+**Initial Human Arguments:**
 {human_args}
 
-**Provide your final classification with the following structure:**
-- **Reason:** Detailed explanation based on the above arguments.
-- **Classification:** Yes/No
+**Bot Expert's Critique of Human Arguments:**
+{bot_critique}
 
-**Example:**
-- **Reason:** The account exhibits high retweet frequency and lacks location information, which are strong indicators of bot activity.
-- **Classification:** Yes
+**Human Expert's Critique of Bot Arguments:**
+{human_critique}
 
-**Now, provide the final classification for this account."""
+Carefully weigh all arguments and counter-arguments. Consider which side made stronger points and addressed the other's criticisms more effectively.
 
-        # Log the prompt
-        logging.debug(f"Prompt for final classification:\n{prompt}")
+Provide your ruling with:
+- **Analysis:** Evaluate the strength of each position and their critiques
+- **Classification:** Yes/No (Is this account a bot?)
+"""
+        response = self._get_completion(prompt, "You are an impartial judge evaluating expert arguments.")
+        return response.choices[0].message.content
 
-        response = self.client.chat.completions.create(
+    def _format_account_details(self, account_details):
+        """Helper to format account details consistently."""
+        return f"""Username: @{account_details['username']}
+Account Creation: {account_details['created_at']}
+Total Tweets: {account_details['tweet']}
+Followers: {account_details['follower_count']}
+Retweets: {account_details['retweet_count']}
+Mentions: {account_details['mention_count']}
+Verified: {'Yes' if account_details['verified'] else 'No'}
+Location: {account_details['location']}
+Hashtags: {', '.join(account_details['hashtags'])}
+Average Daily Retweets: {account_details['avg_daily_retweets']}"""
+
+    def _get_completion(self, prompt, system_message):
+        """Helper to get OpenAI completion with consistent parameters."""
+        return self.client.chat.completions.create(
             model=self.model_name,
             messages=[
-                {"role": "system", "content": "You are an expert in summarizing analysis to provide clear classifications."},
+                {"role": "system", "content": system_message},
                 {"role": "user", "content": prompt}
             ],
             temperature=self.temperature
         )
-
-        # Log the response
-        logging.debug(f"Response for final classification:\n{response.choices[0].message.content}")
-
-        return response.choices[0].message.content
 

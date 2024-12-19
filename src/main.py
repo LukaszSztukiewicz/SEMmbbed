@@ -22,10 +22,17 @@ def process_account(account, openai_interface):
         account_details = account.get_account_details()
         true_label = account.bot_label
 
-        # Get OpenAI analysis
-        bot_args = openai_interface.get_arguments_for_bot(account_details)
-        human_args = openai_interface.get_arguments_against_bot(account_details)
-        final_classification = openai_interface.get_final_classification(account_details, bot_args, human_args)
+        # Get initial arguments
+        bot_args = openai_interface.get_bot_agent_arguments(account_details)
+        human_args = openai_interface.get_human_agent_arguments(account_details)
+
+        # Get critiques
+        bot_critique = openai_interface.get_bot_critic_response(account_details, human_args)
+        human_critique = openai_interface.get_human_critic_response(account_details, bot_args)
+
+        # Get final judgment
+        final_classification = openai_interface.get_final_classification(
+            account_details, bot_args, human_args, bot_critique, human_critique)
         classification = openai_interface.get_classification_result_from_text(final_classification)
 
         logging.info(f"Account @{account.username} classified as {'Bot' if classification else 'Human'}")
