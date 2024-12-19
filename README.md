@@ -23,7 +23,7 @@ cd social-bot-detector
 
 # Setup environment
 chmod +x setup_conda.sh
-./setup_conda.sh
+source setup_conda.sh
 
 # Configure API key
 cp .env.example .env
